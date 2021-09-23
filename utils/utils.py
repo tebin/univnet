@@ -1,26 +1,18 @@
 import random
 import subprocess
 import numpy as np
-from scipy.io.wavfile import read
+import soundfile as sf
+import librosa
 
 
 def get_commit_hash():
     message = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
     return message.strip().decode('utf-8')
 
-def read_wav_np(path):
-    sr, wav = read(path)
 
-    if len(wav.shape) == 2:
-        wav = wav[:, 0]
-
-    if wav.dtype == np.int16:
-        wav = wav / 32768.0
-    elif wav.dtype == np.int32:
-        wav = wav / 2147483648.0
-    elif wav.dtype == np.uint8:
-        wav = (wav - 128) / 128.0
-
-    wav = wav.astype(np.float32)
-
-    return sr, wav
+def read_wav_np(path, resample=24000):
+    wav, sr = sf.read(path, dtype='float32')
+    wav = wav.T
+    wav = librosa.to_mono(wav)
+    wav = librosa.resample(wav, sr, resample, res_type='scipy')
+    return resample, np.clip(wav, -1.0, 1.0)

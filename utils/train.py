@@ -38,7 +38,7 @@ def train(rank, args, chkpt_path, hp, hp_str):
     optim_d = torch.optim.AdamW(model_d.parameters(),
         lr=hp.train.adam.lr, betas=(hp.train.adam.beta1, hp.train.adam.beta2))
 
-    githash = get_commit_hash()
+    #githash = get_commit_hash()
 
     init_epoch = -1
     step = 0
@@ -86,9 +86,9 @@ def train(rank, args, chkpt_path, hp, hp_str):
             if hp_str != checkpoint['hp_str']:
                 logger.warning("New hparams is different from checkpoint. Will use new.")
 
-            if githash != checkpoint['githash']:
-                logger.warning("Code might be different: git hash is different.")
-                logger.warning("%s -> %s" % (checkpoint['githash'], githash))
+            #if githash != checkpoint['githash']:
+                #logger.warning("Code might be different: git hash is different.")
+                #logger.warning("%s -> %s" % (checkpoint['githash'], githash))
 
     else:
         if rank == 0:
@@ -186,6 +186,6 @@ def train(rank, args, chkpt_path, hp, hp_str):
                 'step': step,
                 'epoch': epoch,
                 'hp_str': hp_str,
-                'githash': githash,
+                #'githash': githash,
             }, save_path)
             logger.info("Saved checkpoint to: %s" % save_path)

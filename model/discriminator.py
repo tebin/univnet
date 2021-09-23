@@ -15,10 +15,10 @@ class Discriminator(nn.Module):
         return self.MRD(x), self.MPD(x)
 
 if __name__ == '__main__':
-    hp = OmegaConf.load('../config/default.yaml')
+    hp = OmegaConf.load('../config/default_c32.yaml')
     model = Discriminator(hp)
 
-    x = torch.randn(3, 1, 16384)
+    x = torch.randn(3, 1, 15360)
     print(x.shape)
 
     mrd_output, mpd_output = model(x)

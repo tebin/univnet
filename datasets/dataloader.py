@@ -5,6 +5,7 @@ import random
 import numpy as np
 from torch.utils.data import DistributedSampler, DataLoader, Dataset
 from collections import Counter
+from pathlib import Path
 
 from utils.utils import read_wav_np
 from utils.stft import TacotronSTFT
@@ -12,25 +13,23 @@ from utils.stft import TacotronSTFT
 
 def create_dataloader(hp, args, train, device):
     if train:
-        dataset = MelFromDisk(hp, hp.data.train_dir, hp.data.train_meta, args, train, device)
+        dataset = MelFromDisk(hp, hp.data.train_dir, args, train, device)
         return DataLoader(dataset=dataset, batch_size=hp.train.batch_size, shuffle=False,
                           num_workers=hp.train.num_workers, pin_memory=True, drop_last=True)
 
     else:
-        dataset = MelFromDisk(hp, hp.data.val_dir, hp.data.val_meta, args, train, device)
+        dataset = MelFromDisk(hp, hp.data.val_dir, args, train, device)
         return DataLoader(dataset=dataset, batch_size=1, shuffle=False,
             num_workers=hp.train.num_workers, pin_memory=True, drop_last=False)
 
 
 class MelFromDisk(Dataset):
-    def __init__(self, hp, data_dir, metadata_path, args, train, device):
+    def __init__(self, hp, dir, args, train, device):
         random.seed(hp.train.seed)
         self.hp = hp
         self.args = args
         self.train = train
-        self.data_dir = data_dir
-        metadata_path = os.path.join(data_dir, metadata_path)
-        self.meta = self.load_metadata(metadata_path)
+        self.audio = [str(x) for x in list(Path(dir).rglob('*.wav')) + list(Path(dir).rglob('*mic2.flac'))]
         self.stft = TacotronSTFT(hp.audio.filter_length, hp.audio.hop_length, hp.audio.win_length,
                                  hp.audio.n_mel_channels, hp.audio.sampling_rate,
                                  hp.audio.mel_fmin, hp.audio.mel_fmax, center=False, device=device)
@@ -48,12 +47,12 @@ class MelFromDisk(Dataset):
             self.mapping_weights = torch.DoubleTensor(weights)
 
         elif train:
-            weights = [1.0 / len(self.meta) for _, _, _ in self.meta]
+            weights = [1.0 / len(self.audio) for _ in self.audio]
             self.mapping_weights = torch.DoubleTensor(weights)
 
 
     def __len__(self):
-        return len(self.meta)
+        return len(self.audio)
 
     def __getitem__(self, idx):
         if self.train:
@@ -66,8 +65,7 @@ class MelFromDisk(Dataset):
         random.shuffle(self.mapping_weights)
 
     def my_getitem(self, idx):
-        wavpath, _, _ = self.meta[idx]
-        wavpath = os.path.join(self.data_dir, wavpath)
+        wavpath = self.audio[idx]
         sr, audio = read_wav_np(wavpath)
 
         if len(audio) < self.hp.audio.segment_length + self.hp.audio.pad_short:
@@ -90,7 +88,7 @@ class MelFromDisk(Dataset):
         return mel, audio
 
     def get_mel(self, wavpath):
-        melpath = wavpath.replace('.wav', '.mel')
+        melpath = wavpath.replace('.wav', '.mel').replace('.flac', '.mel')
         try:
             mel = torch.load(melpath, map_location='cpu')
             assert mel.size(0) == self.hp.audio.n_mel_channels, \
@@ -114,12 +112,3 @@ class MelFromDisk(Dataset):
             torch.save(mel, melpath)
 
         return mel
-
-    def load_metadata(self, path, split="|"):
-        metadata = []
-        with open(path, 'r', encoding='utf-8') as f:
-            for line in f:
-                stripped = line.strip().split(split)
-                metadata.append(stripped)
-
-        return metadata

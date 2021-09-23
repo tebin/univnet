@@ -95,7 +95,7 @@ class Generator(nn.Module):
         return audio
 
 if __name__ == '__main__':
-    hp = OmegaConf.load('../config/default.yaml')
+    hp = OmegaConf.load('../config/default_c32.yaml')
     model = Generator(hp)
 
     c = torch.randn(3, 100, 10)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     y = model(c, z)
     print(y.shape)
-    assert y.shape == torch.Size([3, 1, 2560])
+    assert y.shape == torch.Size([3, 1, 2400])
 
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(pytorch_total_params)
